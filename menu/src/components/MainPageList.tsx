@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Collapse, List } from "@material-ui/core";
-import { MenuListItem, MenuListItemData } from "./MenuListItem";
+import MenuListItem, { MenuListItemData } from "./MenuListItem";
 import {
   AccessibilityNew,
   Announcement,
@@ -13,9 +13,9 @@ import { useKeyboardNavigation } from "../hooks/useKeyboardNavigation";
 import { useDialogContext } from "../provider/DialogProvider";
 import { fetchNui } from "../utils/fetchNui";
 import { useSnackbarContext } from "../provider/SnackbarProvider";
-import { txAdminMenuPage, usePage } from "../atoms/page.atom";
+import {txAdminMenuPage, usePage} from "../state/page.state";
 
-export const MainPageList: React.FC = () => {
+export const MainPageList: React.FC<{ visible: boolean }> = ({ visible }) => {
   const { openDialog } = useDialogContext();
   const { openSnackbar } = useSnackbarContext();
 
@@ -143,7 +143,7 @@ export const MainPageList: React.FC = () => {
   ];
 
   return (
-    <Collapse in={page === txAdminMenuPage.Main} mountOnEnter unmountOnExit>
+    <Collapse in={visible} mountOnEnter unmountOnExit>
       <List>
         {menuListItems.map((item, index) => (
           <MenuListItem

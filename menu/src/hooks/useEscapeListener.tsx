@@ -1,6 +1,6 @@
 import { useEffect } from "react";
-import { useSetIsMenuVisible } from "../atoms/visibility.atom";
-import {fetchNui} from "../utils/fetchNui";
+import { fetchNui } from "../utils/fetchNui";
+import { useSetIsMenuVisible } from "../state/visibility.state";
 
 /**
  * Attach a keyboard listener for escape, which will close the menu
@@ -12,8 +12,8 @@ export const useEscapeListener = () => {
     const keyHandler = (e: KeyboardEvent) => {
       if (["Escape", "F1"].includes(e.code)) {
         if (process.env.NODE_ENV !== "development") {
-          setVisible(false)
-          fetchNui('closeMenu')
+          setVisible(false);
+          fetchNui("closeMenu");
         }
       }
     };
