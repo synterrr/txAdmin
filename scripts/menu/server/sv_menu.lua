@@ -19,7 +19,7 @@ AddEventHandler('onResourceStart', function(resourceName)
   if resourceName ~= GetCurrentResourceName() then
     return
   end
-
+  
   local oneSyncConvar = GetConvar('onesync', 'off')
   if oneSyncConvar == ('on' or 'legacy') then
     ServerCtxObj.oneSync.type = oneSyncConvar
@@ -27,20 +27,20 @@ AddEventHandler('onResourceStart', function(resourceName)
   elseif oneSyncConvar == 'off' then
     ServerCtxObj.oneSyncStatus = false
   end
-
+  
   -- Default '' in fxServer
   local svProjectName = GetConvar('sv_projectname', '')
   if svProjectName ~= '' then
     ServerCtxObj.projectName = svProjectName
   end
-
+  
   -- Default 30 in fxServer
   local svMaxClients = GetConvarInt('sv_maxclients', 30)
   ServerCtxObj.maxClients = svMaxClients
-
+  
   debugPrint('Server CTX assigned to GlobalState, CTX:')
   debugPrint(json.encode(ServerCtxObj))
-
+  
   -- In case this was a hot reload of monitor, we send init event to all online clients
   GlobalState.txAdminServerCtx = ServerCtxObj
 end)
@@ -110,4 +110,46 @@ RegisterServerEvent('txAdmin:menu:fixVehicle', function()
   
   debugPrint("Player " .. GetPlayerName(src) .. " repaired their vehicle!")
   TriggerClientEvent('txAdmin:menu:fixVehicle', src)
+end)
+
+--[[ Emit player list to clients ]]
+CreateThread(function()
+  local vehicleTypes = {
+    "Car",
+    "Plane"
+  }
+  while true do
+    local found = {}
+    local players = GetPlayers()
+    
+    for serverID in pairs(players) do
+      local ped = GetPlayerPed(serverID)
+      local veh = GetVehiclePedIsIn(ped, false)
+      local vehClass
+      if veh and veh > 0 then vehClass = GetVehicleClass(veh) end
+      local data = {
+        id = serverID,
+        health = GetEntityHealth(ped),
+        vehicleType = vehClass,
+        pos = GetEntityCoords(ped),
+        username = GetPlayerName(serverID),
+      }
+      table.insert(found, data)
+      Wait(0)
+    end
+    
+    --for i = 1, 1000 do
+    --  local data = {
+    --    health = math.random(0, 200),
+    --    vehicleType = math.random(1, #vehicleTypes),
+    --    id = math.random(1, 1500),
+    --    distance = math.random(1, 5000),
+    --    username = 'skeleboi',
+    --  }
+    --  table.insert(found, data)
+    --end
+    
+    TriggerClientEvent('txAdmin:menu:setPlayerState', -1, found)
+    Wait(1000 * 15)
+  end
 end)
