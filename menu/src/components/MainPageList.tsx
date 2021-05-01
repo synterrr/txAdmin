@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Collapse, List } from "@material-ui/core";
-import { MenuListItem } from "./MenuListItem";
+import { MenuListItem, MenuListItemData } from "./MenuListItem";
 import {
   AccessibilityNew,
   Announcement,
@@ -9,31 +9,44 @@ import {
   LocalHospital,
   LocationSearching,
 } from "@material-ui/icons";
-import { useArrowKeys } from "../hooks/useArrowKeys";
+import { useKeyboardNavigation } from "../hooks/useKeyboardNavigation";
 import { useDialogContext } from "../provider/DialogProvider";
 import { fetchNui } from "../utils/fetchNui";
 import { useSnackbarContext } from "../provider/SnackbarProvider";
-import { txAdminMenuPage, usePageValue } from "../atoms/page.atom";
+import { txAdminMenuPage, usePage } from "../atoms/page.atom";
 
 export const MainPageList: React.FC = () => {
   const { openDialog } = useDialogContext();
-
   const { openSnackbar } = useSnackbarContext();
 
   const [curSelected, setCurSelected] = useState(0);
+  const [page, setPage] = usePage();
 
-  const page = usePageValue();
-
+  // the directions are inverted
   const handleArrowDown = () => {
-    if (curSelected <= 4) setCurSelected(curSelected + 1);
+    const next = (curSelected + 1);
+    setCurSelected((next >= menuListItems.length) ? 0 : next);
   };
   const handleArrowUp = () => {
-    if (curSelected > 0) setCurSelected(curSelected - 1);
+    const next = (curSelected - 1);
+    setCurSelected((curSelected < 0) ? (menuListItems.length - 1) : next)
+  };
+  const handleArrowLeft = () => {
+    if (page > txAdminMenuPage.Main) setPage(page - 1);
+  };
+  const handleArrowRight = () => {
+    if (page <= txAdminMenuPage.txAdmin) setPage(page + 1);
+  };
+  const handleEnter = () => {
+    menuListItems[curSelected].onSelect();
   };
 
-  useArrowKeys({
+  useKeyboardNavigation({
     onDownDown: handleArrowDown,
     onUpDown: handleArrowUp,
+    onLeftDown: handleArrowLeft,
+    onRightDown: handleArrowRight,
+    onEnterDown: handleEnter,
   });
 
   const handleTeleport = () => {
@@ -42,10 +55,18 @@ export const MainPageList: React.FC = () => {
       title: "Teleport",
       placeholder: "340, 480, 12",
       onSubmit: (coords: string) => {
-        openSnackbar("success", "Sending you into the wormhole!"),
-        fetchNui("tpToCoords", coords)
+        const [x, y, z] = coords.split(',').map(s => s.trim())
+          .filter(s => s.match(/^\d{1,4}(?:\.\d{1,9})?$/))
+          .map(s => +s);
+
+        if ([x, y, z].every(n => (typeof n === 'number'))) {
+          openSnackbar("success", "Sending you into the wormhole!");
+          fetchNui("tpToCoords", {x, y, z});
+        } else {
+          openSnackbar("error", "Invalid coordinates. Must be in the format of: 111, 222, 333")
+        }
       }
-    })
+    });
   }
 
   const handleAnnounceMessage = () => {
@@ -56,11 +77,10 @@ export const MainPageList: React.FC = () => {
       onSubmit: (message: string) => {
         // Post up to client with announcement message
         openSnackbar("success", "Sending the announcement");
-        fetchNui("announceMessage", message);
+        fetchNui("sendAnnouncement", {message});
       },
     });
   };
-
   const handleSpawnVehicle = () => {
     openDialog({
       description: "Spawn a vehicle using the model name",
@@ -68,68 +88,70 @@ export const MainPageList: React.FC = () => {
       placeholder: "Adder",
       onSubmit: (modelName: string) => {
         openSnackbar("info", `Trying to spawn ${modelName}`);
-        fetchNui("spawnVehicle", modelName).catch((e) => {
+        fetchNui("spawnVehicle", modelName).catch(() => {
           openSnackbar("success", `Vehicle spawned!`);
         });
       },
     });
   };
-
   const handleFixVehicle = () => {
-    fetchNui("fixCurrentVehicle");
+    fetchNui("fixVehicle");
     openSnackbar("info", "Vehicle fixed!");
   };
-
   const handleHealAllPlayers = () => {
     fetchNui("healAllPlayers");
     openSnackbar("info", "Healing all players");
   };
 
+  const menuListItems: MenuListItemData[] = [
+    {
+      icon: <LocationSearching />,
+      primary: "Teleport",
+      secondary: "Teleport with context",
+      onSelect: handleTeleport,
+    },
+    {
+      icon: <AccessibilityNew />,
+      primary: "Player Mode",
+      secondary: "Current: NoClip",
+      onSelect: () => console.log("Player Mode Clicked"),
+    },
+    {
+      icon: <DirectionsCar />,
+      primary: "Spawn Vehicle",
+      secondary: "Uses model name",
+      onSelect: handleSpawnVehicle,
+    },
+    {
+      icon: <Build />,
+      primary: "Fix Vehicle",
+      secondary: "Set current vehicle health to 100%",
+      onSelect: handleFixVehicle,
+    },
+    {
+      icon: <LocalHospital />,
+      primary: "Heal All Players",
+      secondary: "Will heal all players to full health",
+      onSelect: handleHealAllPlayers,
+    },
+    {
+      icon: <Announcement />,
+      primary: "Send Announcement",
+      secondary: "Announce a message",
+      onSelect: handleAnnounceMessage,
+    },
+  ];
+
   return (
     <Collapse in={page === txAdminMenuPage.Main} mountOnEnter unmountOnExit>
       <List>
-        <MenuListItem
-          selected={curSelected === 0}
-          icon={<LocationSearching />}
-          primary="Teleport"
-          secondary="Teleport with context"
-          onSelect={handleTeleport}
-        />
-        <MenuListItem
-          selected={curSelected === 1}
-          icon={<AccessibilityNew />}
-          primary="Player Mode"
-          secondary="Current: NoClip"
-          onSelect={() => console.log("Player Mode Clicked")}
-        />
-        <MenuListItem
-          selected={curSelected === 2}
-          icon={<DirectionsCar />}
-          primary="Spawn Vehicle"
-          secondary="Uses model name"
-          onSelect={handleSpawnVehicle}
-        />
-        <MenuListItem
-          selected={curSelected === 3}
-          icon={<Build />}
-          primary="Fix Vehicle"
-          secondary="Set current vehicle health to 100%"
-          onSelect={handleFixVehicle}
-        />
-        <MenuListItem
-          selected={curSelected === 4}
-          icon={<LocalHospital />}
-          primary="Heal All Players"
-          secondary="Will heal all players to full health"
-          onSelect={handleHealAllPlayers}
-        />
-        <MenuListItem
-          selected={curSelected === 5}
-          icon={<Announcement />}
-          primary="Send Announcement"
-          secondary="Announce a message"
-          onSelect={handleAnnounceMessage}
-        />
+        {menuListItems.map((item, index) => (
+          <MenuListItem
+            key={index}
+            selected={curSelected === index}
+            {...item}
+          />
+        ))}
       </List>
     </Collapse>
   );
